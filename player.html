@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>動画プレイヤー</title>
+  <style>
+    video {
+      width: 100%;
+      max-width: 640px;
+      margin-bottom: 20px;
+      display: none; /* 放送停止中は非表示にする */
+    }
+    #statusMessage {
+      font-size: 1.5em;
+      color: red;
+      display: none; /* 初期状態では非表示 */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>動画プレイヤー</h1>
+
+  <div id="statusMessage">放送は現在停止しています</div>
+  <video id="videoPlayer" controls>
+    <source id="videoSource" src="" type="video/mp4">
+    お使いのブラウザは動画タグに対応していません。
+  </video>
+
+  <script>
+    // JSONデータ（管理ページと共通）
+    const videos = [
+      { id: "1", title: "動画1", url: "https://example.com/video1.mp4" },
+      { id: "2", title: "動画2", url: "https://example.com/video2.mp4" },
+      { id: "3", title: "動画3", url: "https://example.com/video3.mp4" }
+    ];
+
+    const emergencyVideo = { id: "emergency", title: "緊急放送動画", url: "https://example.com/emergency.mp4" };
+
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoSource = document.getElementById('videoSource');
+    const statusMessage = document.getElementById('statusMessage');
+
+    let currentVideoIndex = 0;
+    let isEmergencyBroadcasting = false;
+
+    function updatePlayerState() {
+      const broadcastAction = localStorage.getItem('broadcastAction');
+      
+      if (broadcastAction === 'stop') {
+        // 放送停止中
+        videoPlayer.style.display = 'none';
+        statusMessage.style.display = 'block';
+        videoPlayer.pause();
+      } else {
+        // 放送再開中
+        videoPlayer.style.display = 'block';
+        statusMessage.style.display = 'none';
+
+        if (broadcastAction === 'emergency') {
+          // 緊急放送が開始された場合
+          isEmergencyBroadcasting = true;
+          videoSource.src = emergencyVideo.url;
+        } else {
+          // 通常放送
+          isEmergencyBroadcasting = false;
+
+          // 動画リストが最後に到達した場合、最初に戻る
+          if (currentVideoIndex >= videos.length) {
+            currentVideoIndex = 0; // 最初に戻る
+          }
+
+          // 現在の動画のURLをセット
+          const nextVideo = videos[currentVideoIndex];
+          videoSource.src = nextVideo.url;
+          localStorage.setItem('currentVideoId', nextVideo.id); // 状態更新
+        }
+
+        videoPlayer.load();
+        videoPlayer.play();
+      }
+    }
+
+    // 動画終了時に次の動画へ移行
+    videoPlayer.addEventListener('ended', () => {
+      if (!isEmergencyBroadcasting) {
+        currentVideoIndex++;
+      }
+      updatePlayerState();
+    });
+
+    // 初期化
+    function initPlayer() {
+      updatePlayerState();
+    }
+
+    // 定期的に状態を確認（緊急放送や停止のチェック）
+    setInterval(() => {
+      const broadcastAction = localStorage.getItem('broadcastAction');
+      if (broadcastAction === 'stop' && !videoPlayer.paused) {
+        // 放送停止時に再生を停止
+        updatePlayerState();
+      } else if (broadcastAction !== 'stop' && videoPlayer.paused) {
+        // 放送再開時に状態を更新
+        updatePlayerState();
+      }
+    }, 1000);
+
+    // プレイヤーを初期化
+    initPlayer();
+  </script>
+
+</body>
+</html>
